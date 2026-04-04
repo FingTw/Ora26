@@ -208,3 +208,92 @@ END;
 /
 
 
+----cập nhật giỏ hàng-------
+CREATE OR REPLACE PROCEDURE SP_CAPNHAT_GIOHANG (
+    p_matk IN NUMBER,
+    p_masp IN NUMBER,
+    p_soluong_moi IN NUMBER
+) IS
+    v_magh NUMBER;
+    v_count NUMBER;
+    v_current_soluong NUMBER;
+    v_soluongton NUMBER;
+    v_tensp NVARCHAR2(255);
+BEGIN
+    -- 1. Lấy MAGH từ MATK
+    SELECT MAGH INTO v_magh FROM GIOHANG WHERE MATK = p_matk;
+    
+    -- 2. Kiểm tra số lượng tồn kho của sản phẩm
+    SELECT SOLUONGTON, TENSP INTO v_soluongton, v_tensp
+    FROM SANPHAM 
+    WHERE MASP = p_masp;
+    
+    -- 3. Kiểm tra sản phẩm có trong giỏ không và lấy số lượng hiện tại
+    SELECT COUNT(*), NVL(MAX(SOLUONG), 0) INTO v_count, v_current_soluong
+    FROM CTGH 
+    WHERE MAGH = v_magh AND MASP = p_masp;
+    
+    -- 4. Kiểm tra số lượng mới có vượt quá tồn kho không
+    IF p_soluong_moi > v_soluongton THEN
+        RAISE_APPLICATION_ERROR(-20005, 
+            'Sản phẩm "' || v_tensp || '" chỉ còn ' || v_soluongton || 
+            ' sản phẩm trong kho! Bạn không thể mua quá số lượng tồn.');
+    END IF;
+    
+    -- 5. Xử lý theo số lượng mới
+    IF p_soluong_moi <= 0 THEN
+        -- Không cho phép set số lượng <= 0 trực tiếp
+        RAISE_APPLICATION_ERROR(-20003, 
+            'Không thể set số lượng <= 0. Vui lòng sử dụng chức năng xóa sản phẩm!');
+        
+    ELSIF p_soluong_moi = 1 THEN
+        -- Cho phép set số lượng = 1
+        IF v_count > 0 THEN
+            UPDATE CTGH 
+            SET SOLUONG = 1 
+            WHERE MAGH = v_magh AND MASP = p_masp;
+            DBMS_OUTPUT.PUT_LINE('Đã cập nhật số lượng sản phẩm ' || p_masp || ' thành 1');
+        ELSE
+            INSERT INTO CTGH (MAGH, MASP, SOLUONG) 
+            VALUES (v_magh, p_masp, 1);
+            DBMS_OUTPUT.PUT_LINE('Đã thêm mới sản phẩm ' || p_masp || ' vào giỏ hàng với số lượng 1');
+        END IF;
+        
+    ELSIF p_soluong_moi > 1 THEN
+        -- Kiểm tra lại lần nữa trước khi cập nhật
+        IF p_soluong_moi > v_soluongton THEN
+            RAISE_APPLICATION_ERROR(-20005, 
+                'Sản phẩm "' || v_tensp || '" chỉ còn ' || v_soluongton || 
+                ' sản phẩm trong kho! Bạn chỉ có thể mua tối đa ' || v_soluongton || ' sản phẩm.');
+        END IF;
+        
+        -- Cho phép tăng số lượng lên > 1
+        IF v_count > 0 THEN
+            UPDATE CTGH 
+            SET SOLUONG = p_soluong_moi 
+            WHERE MAGH = v_magh AND MASP = p_masp;
+            DBMS_OUTPUT.PUT_LINE('Đã cập nhật số lượng sản phẩm ' || p_masp || ' thành ' || p_soluong_moi);
+        ELSE
+            INSERT INTO CTGH (MAGH, MASP, SOLUONG) 
+            VALUES (v_magh, p_masp, p_soluong_moi);
+            DBMS_OUTPUT.PUT_LINE('Đã thêm mới sản phẩm ' || p_masp || ' vào giỏ hàng với số lượng ' || p_soluong_moi);
+        END IF;
+    END IF;
+-- 6. Cập nhật thời gian giỏ hàng
+    UPDATE GIOHANG 
+    SET NGAYCAPNHAT = SYSTIMESTAMP 
+    WHERE MAGH = v_magh;
+    
+    -- 7. Commit transaction
+    COMMIT;
+    
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20001, 'Không tìm thấy giỏ hàng của user ' || p_matk);
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20002, 'Lỗi cập nhật giỏ hàng: ' || SQLERRM);
+END SP_CAPNHAT_GIOHANG;
+/
+
