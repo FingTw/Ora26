@@ -10,6 +10,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminShops from "./pages/admin/AdminShops";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SearchPage from "./pages/SearchPage";
 
 const ShopLayout = () => {
   return (
@@ -31,6 +32,7 @@ function App() {
             <Route index element={<Home />} />
             <Route path="login" element={<Login />} />
             <Route path="cart" element={<Cart />} />
+            <Route path="search" element={<SearchPage />} />
           </Route>
 
           <Route element={<ProtectedRoute adminOnly={true} />}>

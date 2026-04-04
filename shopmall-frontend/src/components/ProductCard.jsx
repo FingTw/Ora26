@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import cartService from "../services/cartService";
 import { CartContext } from "../contexts/CartContext";
 
@@ -7,7 +7,6 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const { fetchCartCount } = useContext(CartContext);
 
-  // ✅ Xử lý ảnh tốt hơn
   const imageUrl = (() => {
     if (product.HINHANH && product.HINHANH !== "default.jpg" && product.HINHANH !== "null") {
       return `http://localhost:5000/uploads/${product.HINHANH}`;
@@ -15,7 +14,6 @@ const ProductCard = ({ product }) => {
     return "https://via.placeholder.com/300x200?text=No+Image";
   })();
 
-  // Hàm xử lý khi khách bấm nút "Thêm vào giỏ"
   const handleAddToCart = async () => {
     const userString = localStorage.getItem("user");
     if (!userString || userString === "undefined") {
@@ -40,69 +38,107 @@ const ProductCard = ({ product }) => {
     }
   };
 
+  const isOutOfStock = product.SOLUONGTON === 0;
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 group">
-      <div className="relative overflow-hidden">
+    <div className="bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col group overflow-hidden">
+
+      {/* 🖼 KHUNG HÌNH ẢNH */}
+      <div className="relative w-full h-48 sm:h-52 overflow-hidden bg-gray-50">
         <img
           src={imageUrl}
           alt={product.TENSP}
-          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           onError={(e) => {
             e.target.src = "https://via.placeholder.com/300x200?text=No+Image";
           }}
         />
-        {/* Badge mới */}
-        {product.SOLUONGTON < 10 && product.SOLUONGTON > 0 && (
-          <span className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
-            Sắp hết hàng
+
+        {/* Badge Trạng thái Góc Trái */}
+        <div className="absolute top-3 left-3">
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white shadow-sm ${isOutOfStock ? 'bg-green-600' : 'bg-green-500'}`}>
+            {isOutOfStock ? 'Hết hàng' : 'Đang bán'}
           </span>
-        )}
-        {product.SOLUONGTON === 0 && (
-          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-            Hết hàng
+        </div>
+
+        {/* Nút thả tim yêu thích Góc Phải */}
+        <button className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 p-2 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+          </svg>
+        </button>
+
+        {/* Badge Số lượng Tồn Áng Ngự Dưới Phải */}
+        <div className="absolute bottom-3 right-3">
+          <span className={`px-3 py-2 rounded-full text-xs font-bold text-white shadow max-w-[150px] truncate block ${isOutOfStock ? 'bg-gray-500' : 'bg-blue-500'}`}>
+            Còn {product.SOLUONGTON} sản phẩm
           </span>
-        )}
+        </div>
       </div>
 
-      <div className="p-4">
-        <h3
-          className="text-lg font-semibold text-gray-800 truncate"
-          title={product.TENSP}
-        >
+      {/* 📃 NỘI DUNG CARD */}
+      <div className="p-4 flex flex-col flex-1">
+
+        {/* Tên sản phẩm */}
+        <h3 className="text-base font-bold text-gray-800 truncate" title={product.TENSP}>
           {product.TENSP}
         </h3>
-        
-        {product.MOTA && (
-          <p
-            className="text-sm text-gray-500 mt-1 line-clamp-2 h-10"
-            title={product.MOTA}
-          >
-            {product.MOTA.length > 60 ? product.MOTA.substring(0, 60) + '...' : product.MOTA}
-          </p>
+
+        {/* Đánh giá (Giả lập Số Sao) */}
+        <div className="flex items-center gap-1 mt-1">
+          <div className="flex text-gray-300 text-xs">
+            <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+            <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+            <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+            <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+            <svg className="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+          </div>
+          <span className="text-xs text-gray-400"></span>
+        </div>
+
+        {/* Tên gian hàng */}
+        {product.TENCH && (
+          <div className="flex items-center gap-1 mt-2 text-gray-500 text-[16px] font-medium tracking-wide">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-400">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+            </svg>
+            <span className="truncate">{product.TENCH}</span>
+          </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <span className="text-green-600 font-bold text-xl">
-              {product.DONGIA?.toLocaleString()}đ
-            </span>
-            {product.SOLUONGTON > 0 && (
-              <p className="text-xs text-gray-400 mt-1">Còn {product.SOLUONGTON} sp</p>
-            )}
-          </div>
-          
+        {/* Mô tả ngắn */}
+        <p className="text-sm text-gray-500 mt-2 line-clamp-1" title={product.MOTA}>
+          {product.MOTA || 'Tuyệt đỉnh hương vị nông sản sạch tới từ cửa hàng.'}
+        </p>
+
+        {/* Tag Phân Loại SP */}
+        <div className="mt-2 text-left">
+          <span className="inline-block border border-teal-500 text-teal-600 rounded-full px-2.5 py-0.5 text-[13px] font-medium tracking-wide bg-teal-50/50 truncate max-w-full">
+            {product.TENLOAI || 'Đặc sản'}
+          </span>
+        </div>
+
+        {/* Vùng dưới cùng: Giá + Nút giỏ hàng */}
+        <div className="mt-auto pt-4 flex items-center justify-between">
+          <span className="text-green-500 font-extrabold text-xl tracking-tight">
+            {product.DONGIA?.toLocaleString()} đ
+          </span>
+
           <button
             onClick={handleAddToCart}
-            disabled={product.SOLUONGTON === 0}
-            className={`px-3 py-2 rounded-md font-medium transition-all duration-300 text-sm active:scale-95 ${
-              product.SOLUONGTON === 0
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-green-100 text-green-700 hover:bg-green-600 hover:text-white'
-            }`}
+            disabled={isOutOfStock}
+            className={`w-14 h-9 flex items-center justify-center rounded-xl shadow-sm transition-all duration-300 active:scale-90 ${isOutOfStock
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-[#FF5722] hover:bg-[#E64A19] text-white'
+              }`}
+            title="Thêm vào giỏ"
           >
-            {product.SOLUONGTON === 0 ? 'Hết hàng' : 'Thêm vào giỏ'}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h7">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+            </svg>
           </button>
         </div>
+
       </div>
     </div>
   );
