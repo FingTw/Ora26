@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import Cart from "./pages/Cart";
 import { CartProvider } from "./contexts/CartContext";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/cart" element={<Cart />} />
             </Routes>
           </div>
         </div>
