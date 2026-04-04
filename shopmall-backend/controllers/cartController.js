@@ -40,25 +40,29 @@ const cartController = {
   },
 
   // 2. API: Lấy chi tiết giỏ hàng của 1 user
-  getCart: async (req, res) => {
-    const matk = req.user.id; // 🔒 Đã sửa: Lấy từ token thay vì URL
-    let connection;
+  // 2. API: Lấy chi tiết giỏ hàng của 1 user
+getCart: async (req, res) => {
+  const matk = req.user.id;
+  let connection;
 
-    try {
-      connection = await oracledb.getConnection();
-      const result = await connection.execute(
-        `SELECT * FROM V_CHITIET_GIOHANG WHERE MATK = :matk`,
-        { matk },
-      );
+  try {
+    connection = await oracledb.getConnection();
+    const result = await connection.execute(
+      `SELECT * FROM V_CHITIET_GIOHANG WHERE MATK = :matk`,
+      { matk },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT } // ✅ THÊM: Lấy dữ liệu dạng object
+    );
 
-      res.status(200).json({ success: true, data: result.rows });
-    } catch (err) {
-      console.error("Lỗi xem giỏ hàng:", err);
-      res.status(500).json({ success: false, message: "Lỗi Server!" });
-    } finally {
-      if (connection) await connection.close();
-    }
-  },
+    console.log("Cart data:", result.rows); // Debug
+
+    res.status(200).json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error("Lỗi xem giỏ hàng:", err);
+    res.status(500).json({ success: false, message: "Lỗi Server!" });
+  } finally {
+    if (connection) await connection.close();
+  }
+},
 
   // 3. API: Cập nhật số lượng (hoặc xóa nếu số lượng = 0)
   updateCartItem: async (req, res) => {
