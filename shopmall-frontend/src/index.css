@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-nong-san: #22c55e;
+}
+
+/* @apply nên dùng trong các class cụ thể, tránh dùng trực tiếp trong body ở bản v4 nếu bị lỗi lặt vặt */
+body {
+  background-color: var(--color-gray-100);
+}
