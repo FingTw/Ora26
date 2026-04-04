@@ -8,7 +8,7 @@ const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const sellerRoutes = require("./routes/sellerRoutes");
-
+const adminRoutes = require("./routes/adminRoutes");
 const app = express();
 
 // Middleware xử lý JSON và CORS
@@ -23,6 +23,7 @@ db.initialize().then(() => {
   app.use("/api/cart", cartRoutes);
   app.use("/api/orders", orderRoutes);
   app.use("/api/seller", sellerRoutes);
+  app.use("/api/admin", adminRoutes);
 
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
