@@ -297,3 +297,214 @@ EXCEPTION
 END SP_CAPNHAT_GIOHANG;
 /
 
+
+------------------admin------
+CREATE OR REPLACE PROCEDURE SP_ADMIN_THEM_TAIKHOAN(
+    p_email IN VARCHAR2,
+    p_matkhau IN VARCHAR2,
+    p_hoten IN NVARCHAR2,
+    p_sdt IN VARCHAR2,
+    p_mavaitro IN NUMBER
+) IS
+BEGIN
+    INSERT INTO TAIKHOAN (EMAIL, MATKHAU, HOTEN, SDT, MAVAITRO) 
+    VALUES (p_email, p_matkhau, p_hoten, p_sdt, p_mavaitro);
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE SP_ADMIN_SUA_TAIKHOAN(
+    p_matk IN NUMBER,
+    p_hoten IN NVARCHAR2,
+    p_sdt IN VARCHAR2,
+    p_mavaitro IN NUMBER
+) IS
+BEGIN
+    UPDATE TAIKHOAN 
+    SET HOTEN = p_hoten, SDT = p_sdt, MAVAITRO = p_mavaitro
+    WHERE MATK = p_matk;
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE SP_ADMIN_XOA_TAIKHOAN(
+    p_matk IN NUMBER
+) IS
+BEGIN
+    DELETE FROM TAIKHOAN WHERE MATK = p_matk;
+    COMMIT;
+END;
+/
+
+-- CRUD LOAISP (Danh mục)
+CREATE OR REPLACE PROCEDURE SP_ADMIN_THEM_LOAISP(
+    p_tenloai IN NVARCHAR2
+) IS
+BEGIN
+    INSERT INTO LOAISP (TENLOAI) VALUES (p_tenloai);
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE SP_ADMIN_SUA_LOAISP(
+    p_maloai IN NUMBER,
+    p_tenloai IN NVARCHAR2
+) IS
+BEGIN
+    UPDATE LOAISP SET TENLOAI = p_tenloai WHERE MALOAI = p_maloai;
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE SP_ADMIN_XOA_LOAISP(
+    p_maloai IN NUMBER
+) IS
+BEGIN
+    DELETE FROM LOAISP WHERE MALOAI = p_maloai;
+    COMMIT;
+END;
+/
+
+
+-- Quản lý CUAHANG
+CREATE OR REPLACE PROCEDURE SP_ADMIN_SUA_CUAHANG(
+    p_mach IN NUMBER,
+    p_trangthai IN NVARCHAR2
+) IS
+BEGIN
+    UPDATE CUAHANG SET TRANGTHAI = p_trangthai WHERE MACH = p_mach;
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE SP_ADMIN_XOA_CUAHANG(
+    p_mach IN NUMBER
+) IS
+BEGIN
+    DELETE FROM CUAHANG WHERE MACH = p_mach;
+    COMMIT;
+END;
+
+
+
+-----------phân trang------------
+CREATE OR REPLACE PROCEDURE SP_LAY_SP_PHAN_TRANG (
+    p_trang IN NUMBER,           -- Trang hiện tại (1, 2, 3...)
+    p_soluong_mot_trang IN NUMBER, -- Số sản phẩm mỗi trang (VD: 12, 20, 24)
+    p_cursor OUT SYS_REFCURSOR,
+    p_tongso OUT NUMBER          -- Tổng số sản phẩm (để biết có bao nhiêu trang)
+) IS
+    v_start NUMBER;
+    v_end NUMBER;
+BEGIN
+    -- Tính toán vị trí bắt đầu và kết thúc
+    v_start := (p_trang - 1) * p_soluong_mot_trang + 1;
+    v_end := p_trang * p_soluong_mot_trang;
+    
+    -- Đếm tổng số sản phẩm đang hoạt động
+    SELECT COUNT(*) INTO p_tongso 
+    FROM V_CHITIET_SANPHAM_WEB;
+    
+    -- Lấy dữ liệu phân trang bằng ROWNUM
+    OPEN p_cursor FOR
+        SELECT * FROM (
+            SELECT a.*, ROWNUM rnum 
+            FROM (
+                SELECT * FROM V_CHITIET_SANPHAM_WEB
+                ORDER BY MASP DESC  -- Sản phẩm mới nhất lên đầu
+            ) a 
+            WHERE ROWNUM <= v_end
+        ) 
+        WHERE rnum >= v_start;
+END SP_LAY_SP_PHAN_TRANG;
+/
+
+-- Lấy sản phẩm theo danh mục có phân trang
+CREATE OR REPLACE PROCEDURE SP_SP_THEO_LOAI_PHANTRANG (
+    p_maloai IN NUMBER,
+    p_trang IN NUMBER,
+    p_soluong_mot_trang IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR,
+    p_tongso OUT NUMBER
+) IS
+    v_start NUMBER;
+    v_end NUMBER;
+BEGIN
+    v_start := (p_trang - 1) * p_soluong_mot_trang + 1;
+    v_end := p_trang * p_soluong_mot_trang;
+    
+    -- Đếm tổng số sản phẩm trong danh mục
+    SELECT COUNT(*) INTO p_tongso 
+    FROM V_CHITIET_SANPHAM_WEB
+    WHERE MALOAI = p_maloai;
+    
+    -- Lấy dữ liệu phân trang
+    OPEN p_cursor FOR
+        SELECT * FROM (
+            SELECT a.*, ROWNUM rnum 
+            FROM (
+                SELECT * FROM V_CHITIET_SANPHAM_WEB
+                WHERE MALOAI = p_maloai
+                ORDER BY MASP DESC
+            ) a 
+            WHERE ROWNUM <= v_end
+        ) 
+        WHERE rnum >= v_start;
+END SP_SP_THEO_LOAI_PHANTRANG;
+/
+
+-- Tìm kiếm sản phẩm với nhiều tiêu chí + phân trang
+CREATE OR REPLACE PROCEDURE SP_TIMKIEM_PHANTRANG (
+    p_tukhoa         IN NVARCHAR2 DEFAULT NULL,
+    p_maloai         IN NUMBER    DEFAULT NULL,
+    p_gia_min        IN NUMBER    DEFAULT 0,
+    p_gia_max        IN NUMBER    DEFAULT 999999999,
+    p_sapxep         IN VARCHAR2  DEFAULT 'moi_nhat',
+    p_trang          IN NUMBER    DEFAULT 1,
+    p_soluong_mot_trang IN NUMBER DEFAULT 12, 
+    p_cursor         OUT SYS_REFCURSOR,
+    p_tongso         OUT NUMBER
+) IS
+    v_start   NUMBER;
+    v_end     NUMBER;
+    v_orderby VARCHAR2(100);
+    v_where   VARCHAR2(500);
+BEGIN
+    v_start := (p_trang - 1) * p_soluong_mot_trang + 1;
+    v_end   := p_trang * p_soluong_mot_trang;
+
+    -- Xác định cách sắp xếp
+    IF    p_sapxep = 'gia_tang' THEN v_orderby := 'ORDER BY DONGIA ASC';
+    ELSIF p_sapxep = 'gia_giam' THEN v_orderby := 'ORDER BY DONGIA DESC';
+    ELSIF p_sapxep = 'ten_az'   THEN v_orderby := 'ORDER BY TENSP ASC';
+    ELSIF p_sapxep = 'ten_za'   THEN v_orderby := 'ORDER BY TENSP DESC';
+    ELSE                             v_orderby := 'ORDER BY MASP DESC';
+    END IF;
+
+    -- ✅ Điều kiện WHERE dùng :placeholder, KHÔNG dùng tên biến PL/SQL
+    v_where := 'WHERE (:p_tukhoa IS NULL OR UPPER(TENSP) LIKE ''%'' || UPPER(:p_tukhoa) || ''%'')
+                  AND (:p_maloai IS NULL OR MALOAI = :p_maloai)
+                  AND DONGIA BETWEEN :p_gia_min AND :p_gia_max';
+
+    -- Đếm tổng số
+    EXECUTE IMMEDIATE
+        'SELECT COUNT(*) FROM V_CHITIET_SANPHAM_WEB ' || v_where
+    INTO p_tongso
+    USING p_tukhoa, p_tukhoa, p_maloai, p_maloai, p_gia_min, p_gia_max;
+    --   ↑ tukhoa truyền 2 lần vì xuất hiện 2 lần trong v_where (:p_tukhoa IS NULL và UPPER(:p_tukhoa))
+
+    -- Lấy dữ liệu phân trang
+    OPEN p_cursor FOR
+        'SELECT * FROM (
+            SELECT a.*, ROWNUM rnum FROM (
+                SELECT * FROM V_CHITIET_SANPHAM_WEB
+                ' || v_where || '
+                ' || v_orderby || '
+            ) a WHERE ROWNUM <= :v_end
+        ) WHERE rnum >= :v_start'
+    USING p_tukhoa, p_tukhoa, p_maloai, p_maloai, p_gia_min, p_gia_max, v_end, v_start;
+
+END SP_TIMKIEM_PHANTRANG;
+/
+
+
