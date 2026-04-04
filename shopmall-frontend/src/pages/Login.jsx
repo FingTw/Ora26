@@ -42,9 +42,15 @@ const Login = () => {
         const userDataToSave = { ...res.user, token: res.token };
         localStorage.setItem("user", JSON.stringify(userDataToSave));
 
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 1000);
+        if (Number(res.user.MAVAITRO) === 1) {
+          setTimeout(() => {
+            window.location.href = "/admin";
+          }, 1000);
+        } else {
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 1000);
+        }
       } else {
         // GỌI API ĐĂNG KÝ
         await authService.register(formData);
