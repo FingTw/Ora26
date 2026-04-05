@@ -16,7 +16,7 @@ EXCEPTION
 END;
 /
 
--- Thủ tục 4: CHỐT ĐƠN HÀNG (Checkout Transaction - Tách Đơn)
+-- Thủ tục 4: CHỐT ĐƠN HÀNG (Checkout Transaction)
 CREATE OR REPLACE PROCEDURE SP_CHOT_DON_HANG(
     p_matk IN NUMBER,
     p_mapttt IN NUMBER,
@@ -104,6 +104,39 @@ EXCEPTION
     WHEN OTHERS THEN
         ROLLBACK;
         RAISE_APPLICATION_ERROR(-20005, 'Lỗi chốt đơn: ' || SQLERRM);
+END;
+/
+
+-- Hủy đơn hàng và hoàn số lượng tồn kho
+CREATE OR REPLACE PROCEDURE SP_HUY_DONHANG(
+    p_mahd IN NUMBER,
+    p_matk IN NUMBER
+) IS
+    v_trangthai NVARCHAR2(50);
+BEGIN
+    -- Lấy trạng thái của hóa đơn để kiểm tra
+    BEGIN
+        SELECT TRANGTHAI INTO v_trangthai 
+        FROM HOADON 
+        WHERE MAHD = p_mahd AND MATK = p_matk;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Đơn hàng không tồn tại hoặc bạn không có quyền hủy!');
+    END;
+
+    -- Chỉ cho phép hủy nếu đơn hàng đang ở trạng thái Cần duyệt hoặc Đang chờ xử lý
+    IF v_trangthai = 'CHỜ XÁC NHẬN' OR v_trangthai = 'ĐANG XỬ LÝ' THEN
+        -- Đổi trạng thái Hóa đơn thành đã hủy.
+        -- Lưu ý: Trigger TRG_HOAN_TONKHO_HUYDON sẽ tự động lắng nghe và hoàn cộng Tồn Kho!
+        UPDATE HOADON 
+        SET TRANGTHAI = 'ĐÃ HỦY' 
+        WHERE MAHD = p_mahd;
+        
+        COMMIT;
+    ELSE
+        -- Nếu là ĐANG GIAO hoặc HOÀN THÀNH thì không cho hủy
+        RAISE_APPLICATION_ERROR(-20006, 'Không thể hủy đơn hàng đã được giao hoặc hoàn thành!');
+    END IF;
 END;
 /
 
@@ -510,7 +543,7 @@ BEGIN
 END SP_TIMKIEM_PHANTRANG;
 /
 
--- [THÊM MỚI] Procedure lấy thông tin cửa hàng theo Mã tài khoản
+---lấy thông tin cửa hàng---
 CREATE OR REPLACE PROCEDURE SP_LAY_THONGTIN_CUAHANG(
     p_matk IN NUMBER,
     p_cursor OUT SYS_REFCURSOR
@@ -522,6 +555,22 @@ BEGIN
         WHERE MATK = p_matk;
 END;
 /
+
+
+
+-- ---Procedure lấy thông tin cửa hàng theo Mã tài khoản
+CREATE OR REPLACE PROCEDURE SP_LAY_THONGTIN_CUAHANG(
+    p_matk IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) IS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT MACH, TENCH, DIACHI, TRANGTHAI, MATK 
+        FROM CUAHANG 
+        WHERE MATK = p_matk;
+END;
+/
+
 
 -- 1. Lấy danh sách sản phẩm của riêng 1 cửa hàng thao tác qua chủ shop (MATK)
 CREATE OR REPLACE PROCEDURE SP_LAY_SANPHAM_CUAHANG(
@@ -578,46 +627,8 @@ CREATE OR REPLACE PROCEDURE SP_XOA_SANPHAM(
     v_mach NUMBER;
 BEGIN
     SELECT MACH INTO v_mach FROM CUAHANG WHERE MATK = p_matk;
-    
-    -- Xoá thực tế khỏi bảng (Sẽ ném lỗi Constraint nếu SP này đã nằm trong Hoá đơn)
-    -- Bạn thông cảm báo khách nên Sửa SOLUONGTON = 0 để giấu sp đi thay vì xoá nếu dính hoá đơn
     DELETE FROM SANPHAM WHERE MASP = p_masp AND MACH = v_mach;
     COMMIT;
 END;
 /
 
-
--- =========================================================
--- Hủy đơn hàng và hoàn số lượng tồn kho
--- =========================================================
-CREATE OR REPLACE PROCEDURE SP_HUY_DONHANG(
-    p_mahd IN NUMBER,
-    p_matk IN NUMBER
-) IS
-    v_trangthai NVARCHAR2(50);
-BEGIN
-    -- Lấy trạng thái của hóa đơn để kiểm tra
-    BEGIN
-        SELECT TRANGTHAI INTO v_trangthai 
-        FROM HOADON 
-        WHERE MAHD = p_mahd AND MATK = p_matk;
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Đơn hàng không tồn tại hoặc bạn không có quyền hủy!');
-    END;
-
-    -- Chỉ cho phép hủy nếu đơn hàng đang ở trạng thái Cần duyệt hoặc Đang chờ xử lý
-    IF v_trangthai = 'CHỜ XÁC NHẬN' OR v_trangthai = 'ĐANG XỬ LÝ' THEN
-        -- Đổi trạng thái Hóa đơn thành đã hủy.
-        -- Lưu ý: Trigger TRG_HOAN_TONKHO_HUYDON sẽ tự động lắng nghe và hoàn cộng Tồn Kho!
-        UPDATE HOADON 
-        SET TRANGTHAI = 'ĐÃ HỦY' 
-        WHERE MAHD = p_mahd;
-        
-        COMMIT;
-    ELSE
-        -- Nếu là ĐANG GIAO hoặc HOÀN THÀNH thì không cho hủy
-        RAISE_APPLICATION_ERROR(-20006, 'Không thể hủy đơn hàng đã được giao hoặc hoàn thành!');
-    END IF;
-END;
-/

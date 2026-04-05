@@ -1,4 +1,4 @@
--- Trigger 3: Tự động hoàn trả Tồn kho khi Đơn hàng bị HỦY
+
 -- Đảm bảo tồn kho luôn chính xác
 CREATE OR REPLACE TRIGGER TRG_HOAN_TONKHO_HUYDON
 AFTER UPDATE OF TRANGTHAI ON HOADON
@@ -22,7 +22,6 @@ BEGIN
     WHERE MASP = :NEW.MASP;
 END;
 /
-
 
 -----Ngăn tự mua hàng của chính mình----
 CREATE OR REPLACE TRIGGER TRG_CHAN_MUA_HANG_NHA

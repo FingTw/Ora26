@@ -93,7 +93,23 @@ SELECT
     (SELECT NVL(SUM(TONGTIEN), 0) FROM HOADON WHERE TRANGTHAI = 'HOÀN THÀNH') AS DOANHTHU_HETHONG
 FROM DUAL;
 
-
+-- Lấy danh sách sản phẩm có phân trang (dùng ROWNUM)
+CREATE OR REPLACE VIEW V_CHITIET_SANPHAM_WEB AS
+SELECT 
+    sp.MASP, 
+    sp.TENSP, 
+    sp.MOTA, 
+    sp.DONGIA, 
+    sp.SOLUONGTON, 
+    sp.HINHANH,
+    sp.MALOAI, -- Thêm cột này vào đây
+    l.TENLOAI, 
+    ch.TENCH, 
+    ch.MACH
+FROM SANPHAM sp
+JOIN LOAISP l ON sp.MALOAI = l.MALOAI
+JOIN CUAHANG ch ON sp.MACH = ch.MACH
+WHERE sp.SOLUONGTON > 0 AND ch.TRANGTHAI = 'HOẠT ĐỘNG';
 
 
 -- Lấy danh sách sản phẩm có phân trang (dùng ROWNUM)
