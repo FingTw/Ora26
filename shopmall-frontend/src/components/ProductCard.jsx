@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import cartService from "../services/cartService";
 import { CartContext } from "../contexts/CartContext";
 
@@ -44,7 +44,7 @@ const ProductCard = ({ product }) => {
     <div className="bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col group overflow-hidden">
 
       {/* 🖼 KHUNG HÌNH ẢNH */}
-      <div className="relative w-full h-48 sm:h-52 overflow-hidden bg-gray-50">
+      <Link to={`/product/${product.MASP}`} className="relative w-full h-48 sm:h-52 overflow-hidden bg-gray-50 block">
         <img
           src={imageUrl}
           alt={product.TENSP}
@@ -62,7 +62,10 @@ const ProductCard = ({ product }) => {
         </div>
 
         {/* Nút thả tim yêu thích Góc Phải */}
-        <button className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 p-2 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors">
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); /* Add logic later */ }}
+          className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-gray-400 hover:text-red-500 p-2 rounded-full w-8 h-8 flex items-center justify-center shadow-sm transition-colors"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
           </svg>
@@ -74,15 +77,17 @@ const ProductCard = ({ product }) => {
             Còn {product.SOLUONGTON} sản phẩm
           </span>
         </div>
-      </div>
+      </Link>
 
       {/* 📃 NỘI DUNG CARD */}
       <div className="p-4 flex flex-col flex-1">
 
         {/* Tên sản phẩm */}
-        <h3 className="text-base font-bold text-gray-800 truncate" title={product.TENSP}>
-          {product.TENSP}
-        </h3>
+        <Link to={`/product/${product.MASP}`} className="hover:text-green-600 transition-colors block">
+          <h3 className="text-base font-bold text-gray-800 truncate" title={product.TENSP}>
+            {product.TENSP}
+          </h3>
+        </Link>
 
         {/* Đánh giá (Giả lập Số Sao) */}
         <div className="flex items-center gap-1 mt-1">
@@ -108,13 +113,13 @@ const ProductCard = ({ product }) => {
 
         {/* Mô tả ngắn */}
         <p className="text-sm text-gray-500 mt-2 line-clamp-1" title={product.MOTA}>
-          {product.MOTA || 'Tuyệt đỉnh hương vị nông sản sạch tới từ cửa hàng.'}
+          {product.MOTA || 'Tuyệt đỉnh chuẩn vị nông thôn sạch.'}
         </p>
 
         {/* Tag Phân Loại SP */}
         <div className="mt-2 text-left">
           <span className="inline-block border border-teal-500 text-teal-600 rounded-full px-2.5 py-0.5 text-[13px] font-medium tracking-wide bg-teal-50/50 truncate max-w-full">
-            {product.TENLOAI || 'Đặc sản'}
+            {product.TENLOAI || 'Đặt sản'}
           </span>
         </div>
 

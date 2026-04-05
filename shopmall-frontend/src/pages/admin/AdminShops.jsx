@@ -3,97 +3,120 @@ import adminService from "../../services/adminService";
 
 const AdminShops = () => {
   const [shops, setShops] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchShops();
-  }, []);
+  useEffect(() => { fetchShops(); }, []);
 
   const fetchShops = async () => {
+    setLoading(true);
     try {
       const res = await adminService.getShops();
       setShops(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   const handleToggleStatus = async (shop) => {
     const newStatus = shop.TRANGTHAI === "HOẠT ĐỘNG" ? "BỊ KHÓA" : "HOẠT ĐỘNG";
-    if (window.confirm(`Xác nhận chuyển cửa hàng sang trạng thái: ${newStatus}?`)) {
-      try {
-        await adminService.updateShop(shop.MACH, { trangthai: newStatus });
-        fetchShops();
-      } catch (err) {
-        alert(err.message || "Lỗi cập nhật");
-      }
-    }
+    if (!window.confirm(`Chuyển cửa hàng "${shop.TENCH}" sang trạng thái: ${newStatus}?`)) return;
+    try {
+      await adminService.updateShop(shop.MACH, { trangthai: newStatus });
+      fetchShops();
+    } catch (err) { alert(err.message || "Lỗi cập nhật"); }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("CẨN THẬN: Xóa cửa hàng có thể lỗi nếu họ đang có SP/Đơn hàng. Bạn chắn chắn chứ?")) {
-      try {
-        await adminService.deleteShop(id);
-        fetchShops();
-      } catch (err) {
-        alert(err.message || "Xóa thất bại (vướng khóa ngoại)!");
-      }
-    }
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Xóa cửa hàng "${name}"? Chỉ xóa được nếu không còn sản phẩm/đơn hàng.`)) return;
+    try {
+      await adminService.deleteShop(id);
+      fetchShops();
+    } catch (err) { alert("Xóa thất bại: " + (err.message || "Vướng khóa ngoại")); }
   };
+
+  const filtered = shops.filter(s =>
+    s.TENCH?.toLowerCase().includes(search.toLowerCase()) ||
+    s.EMAIL?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow max-w-6xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Quản Lý Cửa Hàng (Gian Hàng)</h2>
-      
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left border-collapse border border-gray-200">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-3 border">Mã CH</th>
-              <th className="p-3 border">Tên Cửa Hàng</th>
-              <th className="p-3 border">Thông Tin Chủ (Email)</th>
-              <th className="p-3 border">Địa Chỉ</th>
-              <th className="p-3 border text-center">Trạng Thái</th>
-              <th className="p-3 border text-center">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shops.map((shop, i) => (
-              <tr key={i} className="hover:bg-gray-50 border-b">
-                <td className="p-3 border font-semibold">{shop.MACH}</td>
-                <td className="p-3 border text-blue-700 font-medium">{shop.TENCH}</td>
-                <td className="p-3 border">
-                  {shop.TENCHUCUAHANG} <br/>
-                  <span className="text-sm text-gray-500">{shop.EMAIL}</span>
-                </td>
-                <td className="p-3 border text-sm text-gray-600">{shop.DIACHI}</td>
-                <td className="p-3 border text-center">
-                  <span className={`px-2 py-1 rounded text-sm text-white ${shop.TRANGTHAI === 'HOẠT ĐỘNG' ? 'bg-green-500' : 'bg-red-500'}`}>
-                    {shop.TRANGTHAI}
-                  </span>
-                </td>
-                <td className="p-3 border text-center whitespace-nowrap">
-                  <button 
-                    onClick={() => handleToggleStatus(shop)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 mr-2 text-sm"
-                  >
-                    {shop.TRANGTHAI === 'HOẠT ĐỘNG' ? 'Khóa' : 'Mở Khóa'}
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(shop.MACH)}
-                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
-                  >
-                    Xóa
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {shops.length === 0 && (
-              <tr>
-                <td colSpan="6" className="p-6 text-center text-gray-500">Chưa có cửa hàng nào.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Quản lý Cửa hàng</h2>
+          <p className="text-sm text-gray-500">{shops.length} cửa hàng trong hệ thống</p>
+        </div>
+        <input
+          type="text"
+          placeholder="Tìm theo tên / email chủ..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 w-64"
+        />
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-gray-400">Đang tải...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Mã</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Tên cửa hàng</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Chủ cửa hàng</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600">Địa chỉ</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600">Trạng thái</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((shop) => (
+                  <tr key={shop.MACH} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{shop.MACH}</td>
+                    <td className="px-4 py-3 font-semibold text-indigo-700">{shop.TENCH}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-800">{shop.TENCHUCUAHANG}</p>
+                      <p className="text-xs text-gray-500">{shop.EMAIL}</p>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate" title={shop.DIACHI}>{shop.DIACHI}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        shop.TRANGTHAI === "HOẠT ĐỘNG" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                      }`}>
+                        {shop.TRANGTHAI}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center whitespace-nowrap space-x-2">
+                      <button
+                        onClick={() => handleToggleStatus(shop)}
+                        className={`px-3 py-1.5 text-xs font-semibold border rounded transition-colors ${
+                          shop.TRANGTHAI === "HOẠT ĐỘNG"
+                            ? "text-orange-600 border-orange-200 hover:bg-orange-50"
+                            : "text-green-600 border-green-200 hover:bg-green-50"
+                        }`}
+                      >
+                        {shop.TRANGTHAI === "HOẠT ĐỘNG" ? "Khóa" : "Mở khóa"}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(shop.MACH, shop.TENCH)}
+                        className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors"
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="px-4 py-8 text-center text-gray-400">Không tìm thấy cửa hàng nào.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

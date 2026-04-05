@@ -129,6 +129,130 @@ const sellerController = {
       if (connection) await connection.close();
     }
   },
+
+  // 5. API: Lấy thông tin cửa hàng của một user cụ thể
+  getShopInfo: async (req, res) => {
+    const { matk } = req.params;
+    let connection;
+
+    try {
+      connection = await oracledb.getConnection();
+      const result = await connection.execute(
+        `BEGIN SP_LAY_THONGTIN_CUAHANG(:matk, :cursor); END;`,
+        {
+          matk,
+          cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT },
+        }
+      );
+
+      const cursor = result.outBinds.cursor;
+      const row = await cursor.getRow();
+      await cursor.close();
+
+      if (row) {
+        res.status(200).json({ success: true, data: row });
+      } else {
+        res.status(404).json({ success: false, message: "Người dùng chưa đăng ký cửa hàng!" });
+      }
+    } catch (err) {
+      console.error("Lỗi lấy thông tin cửa hàng:", err);
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    } finally {
+      if (connection) await connection.close();
+    }
+  },
+
+  // 6. API: Lấy danh sách sản phẩm của cửa hàng
+  getShopProducts: async (req, res) => {
+    const { matk } = req.params;
+    let connection;
+
+    try {
+      connection = await oracledb.getConnection();
+      const result = await connection.execute(
+        `BEGIN SP_LAY_SANPHAM_CUAHANG(:matk, :cursor); END;`,
+        {
+          matk,
+          cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
+        }
+      );
+
+      const cursor = result.outBinds.cursor;
+      const rows = [];
+      let row;
+      while ((row = await cursor.getRow())) {
+        rows.push(row);
+      }
+      await cursor.close();
+
+      res.status(200).json({ success: true, data: rows });
+    } catch (err) {
+      console.error("Lỗi lấy danh sách sản phẩm:", err);
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    } finally {
+      if (connection) await connection.close();
+    }
+  },
+
+  // 7. API: Sửa sản phẩm
+  updateProduct: async (req, res) => {
+    const { id } = req.params; // masp
+    const { matk, tensp, mota, dongia, soluongton, maloai } = req.body;
+    const hinhanh = req.file ? req.file.filename : "";
+
+    let connection;
+    try {
+      connection = await oracledb.getConnection();
+      await connection.execute(
+        `BEGIN SP_SUA_SANPHAM(:matk, :masp, :tensp, :mota, :dongia, :soluongton, :maloai, :hinhanh); END;`,
+        {
+          matk: Number(matk),
+          masp: Number(id),
+          tensp,
+          mota,
+          dongia: Number(dongia),
+          soluongton: Number(soluongton),
+          maloai: Number(maloai),
+          hinhanh: hinhanh
+        }
+      );
+
+      res.status(200).json({ success: true, message: "Cập nhật sản phẩm thành công!" });
+    } catch (err) {
+      console.error("Lỗi sửa sản phẩm:", err);
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    } finally {
+      if (connection) await connection.close();
+    }
+  },
+
+  // 8. API: Xoá sản phẩm
+  deleteProduct: async (req, res) => {
+    const { id } = req.params; // masp
+    const { matk } = req.body;
+
+    let connection;
+    try {
+      connection = await oracledb.getConnection();
+      await connection.execute(
+        `BEGIN SP_XOA_SANPHAM(:matk, :masp); END;`,
+        {
+          matk: Number(matk),
+          masp: Number(id)
+        }
+      );
+
+      res.status(200).json({ success: true, message: "Đã xoá sản phẩm!" });
+    } catch (err) {
+      console.error("Lỗi xoá sản phẩm:", err);
+      if (err.message.includes("ORA-02292")) {
+        return res.status(400).json({ success: false, message: "Không thể xóa sản phẩm đã phát sinh giao dịch/hóa đơn! Bạn hãy cập nhật số lượng về 0." });
+      }
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    } finally {
+      if (connection) await connection.close();
+    }
+  }
 };
 
 module.exports = sellerController;

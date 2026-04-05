@@ -29,4 +29,7 @@ router.delete("/shops/:id", adminController.deleteShop);
 // Quản lý Đơn Hàng
 router.get("/orders", adminController.getOrders);
 
+// Biểu đồ phân tích
+router.get("/chart-data", adminController.getChartData);
+
 module.exports = router;

@@ -6,18 +6,17 @@ const AdminCategories = () => {
   const [newCat, setNewCat] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const res = await adminService.getCategories();
       setCategories(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   const handleAdd = async (e) => {
@@ -27,116 +26,113 @@ const AdminCategories = () => {
       await adminService.addCategory({ tenloai: newCat });
       setNewCat("");
       fetchData();
-      alert("Thêm danh mục thành công!");
-    } catch (err) {
-      alert(err.message || "Lỗi thêm danh mục");
-    }
+    } catch (err) { alert(err.message || "Lỗi thêm danh mục"); }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Bạn có chắc muốn xóa danh mục này?")) {
-      try {
-        await adminService.deleteCategory(id);
-        fetchData();
-      } catch (err) {
-        alert(err.message || "Lỗi xóa danh mục (Bị vướng khóa ngoại do đang có sản phẩm thuộc loại này)!");
-      }
-    }
-  };
-
-  const startEdit = (cat) => {
-    setEditingId(cat.MALOAI);
-    setEditingName(cat.TENLOAI);
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Xóa danh mục "${name}"?`)) return;
+    try {
+      await adminService.deleteCategory(id);
+      fetchData();
+    } catch (err) { alert("Xóa thất bại: đang có sản phẩm thuộc danh mục này."); }
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (!editingName.trim()) return;
     try {
       await adminService.updateCategory(editingId, { tenloai: editingName });
       setEditingId(null);
       setEditingName("");
       fetchData();
-      alert("Cập nhật thành công!");
-    } catch (err) {
-      alert(err.message || "Lỗi cập nhật");
-    }
+    } catch (err) { alert(err.message || "Lỗi cập nhật"); }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản Lý Loại Sản Phẩm (Danh Mục)</h2>
-      
-      {/* Khung Thêm mới */}
-      <form onSubmit={handleAdd} className="mb-8 flex gap-4">
-        <input 
-          type="text" 
-          value={newCat} 
-          onChange={(e) => setNewCat(e.target.value)} 
-          placeholder="Nhập tên danh mục mới..." 
-          className="flex-1 border px-4 py-2 rounded focus:outline-none focus:ring focus:border-blue-300"
+    <div className="space-y-4 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-bold text-gray-800">Quản lý Danh mục</h2>
+        <p className="text-sm text-gray-500">{categories.length} danh mục sản phẩm</p>
+      </div>
+
+      {/* Form thêm mới */}
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <input
+          type="text"
+          value={newCat}
+          onChange={e => setNewCat(e.target.value)}
+          placeholder="Nhập tên danh mục mới..."
+          className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-indigo-400"
         />
-        <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-semibold transition">
-          Thêm Mới
+        <button
+          type="submit"
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-md hover:bg-indigo-700 transition-colors"
+        >
+          + Thêm mới
         </button>
       </form>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left border-collapse border border-gray-200">
-          <thead>
-            <tr className="bg-gray-100 text-gray-700">
-              <th className="p-3 border">Mã Loại</th>
-              <th className="p-3 border">Tên Loại Sản Phẩm</th>
-              <th className="p-3 border text-center w-48">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((cat, i) => (
-              <tr key={i} className="hover:bg-gray-50 border-b">
-                <td className="p-3 border font-semibold text-gray-600">{cat.MALOAI}</td>
-                <td className="p-3 border">
-                  {editingId === cat.MALOAI ? (
-                    <form onSubmit={handleUpdate} className="flex gap-2">
-                       <input 
-                          type="text" 
-                          value={editingName} 
-                          onChange={(e) => setEditingName(e.target.value)} 
-                          className="flex-1 border px-2 py-1 rounded"
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-gray-400">Đang tải...</div>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600 w-20">Mã</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">Tên danh mục</th>
+                <th className="px-4 py-3 text-center font-semibold text-gray-600 w-40">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {categories.map((cat) => (
+                <tr key={cat.MALOAI} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{cat.MALOAI}</td>
+                  <td className="px-4 py-3">
+                    {editingId === cat.MALOAI ? (
+                      <form onSubmit={handleUpdate} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          className="flex-1 border border-indigo-300 rounded px-2.5 py-1.5 text-sm focus:outline-none"
                           autoFocus
-                       />
-                       <button type="submit" className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">Lưu</button>
-                       <button type="button" onClick={() => setEditingId(null)} className="bg-gray-400 text-white px-3 py-1 rounded text-sm hover:bg-gray-500">Hủy</button>
-                    </form>
-                  ) : (
-                    <span className="text-gray-800">{cat.TENLOAI}</span>
-                  )}
-                </td>
-                <td className="p-3 border text-center">
-                   {editingId !== cat.MALOAI && (
-                     <>
-                        <button 
-                          onClick={() => startEdit(cat)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 mr-2"
+                        />
+                        <button type="submit" className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded hover:bg-indigo-700">Lưu</button>
+                        <button type="button" onClick={() => setEditingId(null)} className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded hover:bg-gray-300">Hủy</button>
+                      </form>
+                    ) : (
+                      <span className="text-gray-800 font-medium">{cat.TENLOAI}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center space-x-2">
+                    {editingId !== cat.MALOAI && (
+                      <>
+                        <button
+                          onClick={() => { setEditingId(cat.MALOAI); setEditingName(cat.TENLOAI); }}
+                          className="px-3 py-1.5 text-xs font-semibold text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50 transition-colors"
                         >
                           Sửa
                         </button>
-                        <button 
-                          onClick={() => handleDelete(cat.MALOAI)}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                        <button
+                          onClick={() => handleDelete(cat.MALOAI, cat.TENLOAI)}
+                          className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors"
                         >
                           Xóa
                         </button>
-                     </>
-                   )}
-                </td>
-              </tr>
-            ))}
-            {categories.length === 0 && (
-              <tr>
-                <td colSpan="3" className="p-6 text-center text-gray-500">Chưa có danh mục nào.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {categories.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="px-4 py-8 text-center text-gray-400">Chưa có danh mục nào.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

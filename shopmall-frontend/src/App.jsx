@@ -11,6 +11,11 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminShops from "./pages/admin/AdminShops";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SearchPage from "./pages/SearchPage";
+import ShopRegistration from "./pages/seller/ShopRegistration";
+import ShopManagement from "./pages/seller/ShopManagement";
+import ProductDetail from "./pages/ProductDetail";
+import OrderHistory from "./pages/OrderHistory";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 
 const ShopLayout = () => {
   return (
@@ -33,6 +38,11 @@ function App() {
             <Route path="login" element={<Login />} />
             <Route path="cart" element={<Cart />} />
             <Route path="search" element={<SearchPage />} />
+            <Route path="shop/register" element={<ShopRegistration />} />
+            <Route path="shop/management" element={<ShopManagement />} />
+            <Route path="product/:id" element={<ProductDetail />} />
+            <Route path="user/orders" element={<OrderHistory />} />
+            <Route path="checkout-success" element={<CheckoutSuccess />} />
           </Route>
 
           <Route element={<ProtectedRoute adminOnly={true} />}>

@@ -16,7 +16,7 @@ EXCEPTION
 END;
 /
 
--- Thủ tục 4: CHỐT ĐƠN HÀNG (Checkout Transaction)
+-- Thủ tục 4: CHỐT ĐƠN HÀNG (Checkout Transaction - Tách Đơn)
 CREATE OR REPLACE PROCEDURE SP_CHOT_DON_HANG(
     p_matk IN NUMBER,
     p_mapttt IN NUMBER,
@@ -25,7 +25,9 @@ CREATE OR REPLACE PROCEDURE SP_CHOT_DON_HANG(
     p_mahd OUT NUMBER
 ) IS
     v_magh NUMBER;
-    v_tongtien NUMBER := 0;
+    v_count NUMBER;
+    v_new_mahd NUMBER;
+    v_total_shop_tien NUMBER;
 BEGIN
     -- 1. Lấy mã giỏ hàng của tài khoản
     SELECT MAGH INTO v_magh FROM GIOHANG WHERE MATK = p_matk;
@@ -34,41 +36,14 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20015, 'Chưa chọn sản phẩm nào để thanh toán!');
     END IF;
 
-    -- 2. Tính tổng tiền (CHỈ TÍNH CÁC MÓN ĐƯỢC CHỌN)
-    SELECT NVL(SUM(ct.SOLUONG * sp.DONGIA), 0) INTO v_tongtien
-    FROM CTGH ct JOIN SANPHAM sp ON ct.MASP = sp.MASP
-    WHERE ct.MAGH = v_magh
-      AND ct.MASP IN (
-          -- Kỹ thuật tách chuỗi '1,3,5' thành các dòng: 1, 3, 5
-          SELECT TO_NUMBER(REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL))
-          FROM DUAL
-          CONNECT BY REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL) IS NOT NULL
-      );
-
-    IF v_tongtien = 0 THEN
-        RAISE_APPLICATION_ERROR(-20003, 'Các sản phẩm chọn mua không hợp lệ hoặc không có trong giỏ!');
-    END IF;
-
-    -- 3. Tạo hóa đơn
-    INSERT INTO HOADON (MATK, MAPTTT, TONGTIEN, DIACHIGIAO)
-    VALUES (p_matk, p_mapttt, v_tongtien, p_diachigiao)
-    RETURNING MAHD INTO p_mahd;
-
-    -- 4. Chuyển hàng từ Giỏ sang Chi tiết hóa đơn (CHỈ CHUYỂN MÓN ĐƯỢC CHỌN)
-    INSERT INTO CTHD (MAHD, MASP, SOLUONG, DONGIALUCMUA)
-    SELECT p_mahd, ct.MASP, ct.SOLUONG, sp.DONGIA
-    FROM CTGH ct JOIN SANPHAM sp ON ct.MASP = sp.MASP
-    WHERE ct.MAGH = v_magh
-      AND ct.MASP IN (
-          SELECT TO_NUMBER(REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL))
-          FROM DUAL
-          CONNECT BY REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL) IS NOT NULL
-      );
+    -- Kiểm tra xem chuỗi có hợp lệ không
+    SELECT COUNT(*) INTO v_count FROM DUAL WHERE p_danhsach_sp IS NOT NULL;
     
-    -- 5. Trừ tồn kho trong bảng SANPHAM (CHỈ TRỪ MÓN ĐƯỢC CHỌN)
-    FOR rec IN (
-        SELECT ct.MASP, ct.SOLUONG 
-        FROM CTGH ct 
+    -- 2. Duyệt qua TỪNG cửa hàng có sản phẩm trong giỏ được chọn
+    FOR shop_rec IN (
+        SELECT DISTINCT sp.MACH
+        FROM CTGH ct
+        JOIN SANPHAM sp ON ct.MASP = sp.MASP
         WHERE ct.MAGH = v_magh
           AND ct.MASP IN (
               SELECT TO_NUMBER(REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL))
@@ -76,12 +51,40 @@ BEGIN
               CONNECT BY REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL) IS NOT NULL
           )
     ) LOOP
-        UPDATE SANPHAM 
-        SET SOLUONGTON = SOLUONGTON - rec.SOLUONG 
-        WHERE MASP = rec.MASP;
+        -- Tổng tiền cho Cửa hàng này
+        SELECT NVL(SUM(ct.SOLUONG * sp.DONGIA), 0) INTO v_total_shop_tien
+        FROM CTGH ct JOIN SANPHAM sp ON ct.MASP = sp.MASP
+        WHERE ct.MAGH = v_magh
+          AND sp.MACH = shop_rec.MACH
+          AND ct.MASP IN (
+              SELECT TO_NUMBER(REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL))
+              FROM DUAL
+              CONNECT BY REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL) IS NOT NULL
+          );
+          
+        -- Tạo hóa đơn riêng cho Cửa hàng này
+        INSERT INTO HOADON (MATK, MAPTTT, TONGTIEN, DIACHIGIAO)
+        VALUES (p_matk, p_mapttt, v_total_shop_tien, p_diachigiao)
+        RETURNING MAHD INTO v_new_mahd;
+        
+        -- Ghi nhận MAHD ra ngoài (Mã cuối cùng)
+        p_mahd := v_new_mahd;
+
+        -- Chuyển hàng từ Giỏ sang Chi tiết hóa đơn (CHỈ CỦA CỬA HÀNG NÀY)
+        -- Lưu ý: Trigger TRG_GIAM_TONKHO_DAT_HANG sẽ tự động trừ kho ở bước này!
+        INSERT INTO CTHD (MAHD, MASP, SOLUONG, DONGIALUCMUA)
+        SELECT v_new_mahd, ct.MASP, ct.SOLUONG, sp.DONGIA
+        FROM CTGH ct JOIN SANPHAM sp ON ct.MASP = sp.MASP
+        WHERE ct.MAGH = v_magh
+          AND sp.MACH = shop_rec.MACH
+          AND ct.MASP IN (
+              SELECT TO_NUMBER(REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL))
+              FROM DUAL
+              CONNECT BY REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL) IS NOT NULL
+          );
     END LOOP;
 
-    -- 6. CHỈ XÓA các món đã mua khỏi giỏ hàng (Các món chưa mua vẫn ở lại)
+    -- 3. Xóa các món đã mua khỏi giỏ hàng
     DELETE FROM CTGH 
     WHERE MAGH = v_magh 
       AND MASP IN (
@@ -90,7 +93,7 @@ BEGIN
           CONNECT BY REGEXP_SUBSTR(p_danhsach_sp, '[^,]+', 1, LEVEL) IS NOT NULL
       );
 
-    -- Cập nhật lại thời gian giỏ hàng
+    -- 4. Cập nhật lại thời gian giỏ hàng
     UPDATE GIOHANG SET NGAYCAPNHAT = SYSTIMESTAMP WHERE MAGH = v_magh;
 
     COMMIT;
@@ -507,4 +510,114 @@ BEGIN
 END SP_TIMKIEM_PHANTRANG;
 /
 
+-- [THÊM MỚI] Procedure lấy thông tin cửa hàng theo Mã tài khoản
+CREATE OR REPLACE PROCEDURE SP_LAY_THONGTIN_CUAHANG(
+    p_matk IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) IS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT MACH, TENCH, DIACHI, TRANGTHAI, MATK 
+        FROM CUAHANG 
+        WHERE MATK = p_matk;
+END;
+/
 
+-- 1. Lấy danh sách sản phẩm của riêng 1 cửa hàng thao tác qua chủ shop (MATK)
+CREATE OR REPLACE PROCEDURE SP_LAY_SANPHAM_CUAHANG(
+    p_matk IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) IS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT sp.*, ls.TENLOAI 
+        FROM SANPHAM sp
+        JOIN LOAISP ls ON sp.MALOAI = ls.MALOAI
+        WHERE sp.MACH = (SELECT MACH FROM CUAHANG WHERE MATK = p_matk)
+        ORDER BY sp.MASP DESC;
+END;
+/
+
+-- 2. Cập nhật (Sửa) thông tin sản phẩm
+CREATE OR REPLACE PROCEDURE SP_SUA_SANPHAM(
+    p_matk IN NUMBER,
+    p_masp IN NUMBER,
+    p_tensp IN NVARCHAR2,
+    p_mota IN NVARCHAR2,
+    p_dongia IN NUMBER,
+    p_soluongton IN NUMBER,
+    p_maloai IN NUMBER,
+    p_hinhanh IN VARCHAR2 -- Nhận chuỗi rỗng nếu không thay đổi ảnh
+) IS
+    v_mach NUMBER;
+BEGIN
+    -- Kiểm tra chủ cửa hàng đúng với mã hay ko
+    SELECT MACH INTO v_mach FROM CUAHANG WHERE MATK = p_matk;
+
+    IF p_hinhanh IS NOT NULL AND p_hinhanh != '' THEN
+        UPDATE SANPHAM 
+        SET TENSP = p_tensp, MOTA = p_mota, DONGIA = p_dongia, 
+            SOLUONGTON = p_soluongton, MALOAI = p_maloai, HINHANH = p_hinhanh
+        WHERE MASP = p_masp AND MACH = v_mach;
+    ELSE
+        -- Nếu không up ảnh mới thì giữ nguyên ảnh cũ
+        UPDATE SANPHAM 
+        SET TENSP = p_tensp, MOTA = p_mota, DONGIA = p_dongia, 
+            SOLUONGTON = p_soluongton, MALOAI = p_maloai
+        WHERE MASP = p_masp AND MACH = v_mach;
+    END IF;
+    COMMIT;
+END;
+/
+
+-- 3. Xoá sản phẩm
+CREATE OR REPLACE PROCEDURE SP_XOA_SANPHAM(
+    p_matk IN NUMBER,
+    p_masp IN NUMBER
+) IS
+    v_mach NUMBER;
+BEGIN
+    SELECT MACH INTO v_mach FROM CUAHANG WHERE MATK = p_matk;
+    
+    -- Xoá thực tế khỏi bảng (Sẽ ném lỗi Constraint nếu SP này đã nằm trong Hoá đơn)
+    -- Bạn thông cảm báo khách nên Sửa SOLUONGTON = 0 để giấu sp đi thay vì xoá nếu dính hoá đơn
+    DELETE FROM SANPHAM WHERE MASP = p_masp AND MACH = v_mach;
+    COMMIT;
+END;
+/
+
+
+-- =========================================================
+-- Hủy đơn hàng và hoàn số lượng tồn kho
+-- =========================================================
+CREATE OR REPLACE PROCEDURE SP_HUY_DONHANG(
+    p_mahd IN NUMBER,
+    p_matk IN NUMBER
+) IS
+    v_trangthai NVARCHAR2(50);
+BEGIN
+    -- Lấy trạng thái của hóa đơn để kiểm tra
+    BEGIN
+        SELECT TRANGTHAI INTO v_trangthai 
+        FROM HOADON 
+        WHERE MAHD = p_mahd AND MATK = p_matk;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Đơn hàng không tồn tại hoặc bạn không có quyền hủy!');
+    END;
+
+    -- Chỉ cho phép hủy nếu đơn hàng đang ở trạng thái Cần duyệt hoặc Đang chờ xử lý
+    IF v_trangthai = 'CHỜ XÁC NHẬN' OR v_trangthai = 'ĐANG XỬ LÝ' THEN
+        -- Đổi trạng thái Hóa đơn thành đã hủy.
+        -- Lưu ý: Trigger TRG_HOAN_TONKHO_HUYDON sẽ tự động lắng nghe và hoàn cộng Tồn Kho!
+        UPDATE HOADON 
+        SET TRANGTHAI = 'ĐÃ HỦY' 
+        WHERE MAHD = p_mahd;
+        
+        COMMIT;
+    ELSE
+        -- Nếu là ĐANG GIAO hoặc HOÀN THÀNH thì không cho hủy
+        RAISE_APPLICATION_ERROR(-20006, 'Không thể hủy đơn hàng đã được giao hoặc hoàn thành!');
+    END IF;
+END;
+/

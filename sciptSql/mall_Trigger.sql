@@ -12,6 +12,16 @@ BEGIN
     END LOOP;
 END;
 /
+-- Trigger: Tự động TRỪ TỒN KHO khi có Hóa đơn Sinh Mới (CTHD được thêm)
+CREATE OR REPLACE TRIGGER TRG_GIAM_TONKHO_DAT_HANG
+AFTER INSERT ON CTHD
+FOR EACH ROW
+BEGIN
+    UPDATE SANPHAM 
+    SET SOLUONGTON = SOLUONGTON - :NEW.SOLUONG 
+    WHERE MASP = :NEW.MASP;
+END;
+/
 
 
 -----Ngăn tự mua hàng của chính mình----

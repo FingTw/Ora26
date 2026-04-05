@@ -7,5 +7,6 @@ router.post("/checkout", verifyToken, orderController.checkout);
 router.post("/cancel", verifyToken, orderController.cancelOrder);
 router.get("/history/:matk", verifyToken, orderController.getHistory);
 router.get("/details/:mahd", verifyToken, orderController.getOrderDetails);
+router.put("/receive", verifyToken, orderController.receiveOrder);
 
 module.exports = router;

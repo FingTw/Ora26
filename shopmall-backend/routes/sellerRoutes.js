@@ -25,5 +25,11 @@ router.post(
 );
 router.get("/orders/:matk", verifyToken, sellerController.getShopOrders); // Xem đơn khách đặt
 router.put("/orders/status", verifyToken, sellerController.updateOrderStatus); // Cập nhật trạng thái đơn
+router.get("/shop-info/:matk", verifyToken, sellerController.getShopInfo); // Lấy thông tin shop của tài khoản
+
+// -- Route quản lý sản phẩm
+router.get("/products/myshop/:matk", verifyToken, sellerController.getShopProducts); // Lấy sp của shop
+router.put("/products/:id", verifyToken, upload.single("hinhanh"), sellerController.updateProduct); // Sửa sp
+router.delete("/products/:id", verifyToken, sellerController.deleteProduct); // Xoá sp
 
 module.exports = router;

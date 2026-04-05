@@ -117,13 +117,28 @@ const Home = () => {
   return (
     <div>
       {/* Banner */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-8 mb-8 shadow-lg text-center">
-        <h1 className="text-3xl md:text-4xl font-bold mb-4">
-          Nông Sản Sạch - Trực tiếp từ nhà vườn
-        </h1>
-        <p className="text-green-100 text-lg">
-          Mua sắm an toàn, ủng hộ nông dân Việt Nam
-        </p>
+      <div className="relative w-full h-[300px] mb-8 rounded-3xl overflow-hidden shadow-2xl group">
+        <img 
+          src="/BANNER-WEB-NONG-NGHIEP-VINASA.jpg" 
+          alt="Banner Nông Sản" 
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent flex items-center">
+          <div className="px-8 md:px-16 text-white max-w-2xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-700">
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-4 drop-shadow-lg leading-tight tracking-tight">
+              Nông Sản Sạch <br/><span className="text-green-400">Từ Nông Trại Việt</span>
+            </h1>
+            <p className="text-lg md:text-xl text-gray-100 mb-6 drop-shadow-md opacity-90">
+              Chung tay kết nối nhà nông, mang sản phẩm an toàn, chất lượng nhất đến mọi gia đình.
+            </p>
+            <button 
+              onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })}
+              className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 text-lg px-8 rounded-full shadow-[0_0_15px_rgba(22,163,74,0.5)] transition-all hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(22,163,74,0.7)]"
+            >
+              Mua Sắm Ngay
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Header với thông tin phân trang */}

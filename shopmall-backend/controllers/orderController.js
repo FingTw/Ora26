@@ -122,6 +122,32 @@ const orderController = {
       if (connection) await connection.close();
     }
   },
+
+  // 5. API: Khách hàng xác nhận đã nhận được hàng
+  receiveOrder: async (req, res) => {
+    const { mahd, matk } = req.body;
+    let connection;
+
+    try {
+      connection = await oracledb.getConnection();
+      const result = await connection.execute(
+        `UPDATE HOADON SET TRANGTHAI = 'HOÀN THÀNH' WHERE MAHD = :mahd AND MATK = :matk AND TRANGTHAI = 'ĐANG GIAO'`,
+        { mahd: Number(mahd), matk: Number(matk) },
+        { autoCommit: true }
+      );
+      
+      if (result.rowsAffected && result.rowsAffected > 0) {
+        res.status(200).json({ success: true, message: "Đã xác nhận nhận hàng thành công!" });
+      } else {
+        res.status(400).json({ success: false, message: "Không thể xác nhận! Đơn hàng phải ở trạng thái ĐANG GIAO." });
+      }
+    } catch (err) {
+      console.error("Lỗi xác nhận nhận hàng:", err);
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    } finally {
+      if (connection) await connection.close();
+    }
+  },
 };
 
 module.exports = orderController;

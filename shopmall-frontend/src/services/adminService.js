@@ -45,6 +45,10 @@ const adminService = {
   deleteCategory: async (id) => {
     const response = await api.delete(`/admin/categories/${id}`);
     return response.data;
+  },
+  getChartData: async () => {
+    const response = await api.get("/admin/chart-data");
+    return response.data;
   }
 };
 

@@ -212,6 +212,31 @@ const productController = {
     } finally {
       if (connection) await connection.close();
     }
+  },
+
+  // Lấy chi tiết một sản phẩm qua VIEW
+  getProductById: async (req, res) => {
+    const { id } = req.params;
+    let connection;
+    try {
+      connection = await oracledb.getConnection();
+      
+      const result = await connection.execute(
+        `SELECT * FROM V_CHITIET_SANPHAM_WEB WHERE MASP = :id`,
+        { id: Number(id) }
+      );
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: "Sản phẩm không tồn tại!" });
+      }
+      
+      res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+      console.error("Lỗi lấy chi tiết sản phẩm:", err);
+      res.status(500).json({ success: false, message: "Lỗi server!" });
+    } finally {
+      if (connection) await connection.close();
+    }
   }
 };
 

@@ -6,6 +6,7 @@ import SearchBar from "../components/SearchBar";
 const Navbar = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // 2. HÚT CON SỐ cartCount REAL-TIME TỪ KHO RA
   const { cartCount } = useContext(CartContext);
@@ -32,8 +33,9 @@ const Navbar = () => {
     <nav className="bg-white text-black shadow-md rounded-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <Link to="/" className="text-2xl font-bold tracking-wider">
-            🌿Mall
+          <Link to="/" className="flex items-center gap-2 group">
+            <img src="/logo.svg" alt="Nông Sản Logo" className="h-10 w-auto group-hover:scale-110 transition-transform" />
+            <span className="text-2xl font-extrabold tracking-wider text-green-700">Mall</span>
           </Link>
 
           <div className="flex items-center space-x-6">
@@ -58,12 +60,53 @@ const Navbar = () => {
 
             {user ? (
               <div className="flex items-center space-x-4">
-                <span className="font-medium text-green-100 bg-green-600 px-3 py-1.5 rounded-full">
-                  👋 Chào, {user.HOTEN}
-                </span>
+                <div className="relative">
+                  <div 
+                    className="font-medium text-green-100 bg-green-600 px-3 py-1.5 rounded-full cursor-pointer flex items-center gap-1 hover:bg-green-700 transition"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                    👋 Chào, {user.HOTEN}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-100">
+                      {user.MAVAITRO === 3 ? (
+                        <Link
+                          to="/shop/management"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          Quản lý cửa hàng
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/shop/register"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          Đăng ký bán hàng
+                        </Link>
+                      )}
+                      
+                      <div className="border-t border-gray-100 my-1"></div>
+                      
+                      <Link
+                        to="/user/orders"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 font-medium"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        📦 Đơn hàng của tôi
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={handleLogout}
-                  className="bg-gray-300 hover:bg-red-500 text-black px-3 py-1.5 rounded-md font-medium transition text-sm"
+                  className="bg-gray-300 hover:bg-red-500 hover:text-white text-black px-3 py-1.5 rounded-md font-medium transition text-sm"
                 >
                   Đăng xuất
                 </button>

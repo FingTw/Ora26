@@ -220,6 +220,59 @@ const adminController = {
     } finally {
       if (connection) await connection.close();
     }
+  },
+
+  // API biểu đồ phân tích Dashboard
+  getChartData: async (req, res) => {
+    let connection;
+    try {
+      connection = await oracledb.getConnection();
+
+      // 1. Dữ liệu trạng thái đơn hàng
+      const orderStatus = await connection.execute(
+        `SELECT TRANGTHAI, COUNT(*) AS SOLUONG FROM HOADON GROUP BY TRANGTHAI ORDER BY SOLUONG DESC`
+      );
+
+      // 2. Sản phẩm theo danh mục
+      const productByCategory = await connection.execute(
+        `SELECT l.TENLOAI, COUNT(sp.MASP) AS SOLUONG 
+         FROM SANPHAM sp JOIN LOAISP l ON sp.MALOAI = l.MALOAI 
+         GROUP BY l.TENLOAI ORDER BY SOLUONG DESC`
+      );
+
+      // 3. Top 5 cửa hàng doanh thu cao nhất
+      const topShops = await connection.execute(
+        `SELECT ch.TENCH, NVL(SUM(ct.SOLUONG * ct.DONGIALUCMUA), 0) AS DOANHTHU
+         FROM CUAHANG ch
+         LEFT JOIN SANPHAM sp ON sp.MACH = ch.MACH
+         LEFT JOIN CTHD ct ON ct.MASP = sp.MASP
+         LEFT JOIN HOADON hd ON hd.MAHD = ct.MAHD AND hd.TRANGTHAI = 'HOÀN THÀNH'
+         GROUP BY ch.TENCH ORDER BY DOANHTHU DESC
+         FETCH FIRST 5 ROWS ONLY`
+      );
+
+      // 4. Tương quan người dùng theo vai trò
+      const userByRole = await connection.execute(
+        `SELECT vt.TENVAITRO, COUNT(tk.MATK) AS SOLUONG
+         FROM TAIKHOAN tk JOIN VAITRO vt ON tk.MAVAITRO = vt.MAVAITRO
+         GROUP BY vt.TENVAITRO`
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          orderStatus: orderStatus.rows,
+          productByCategory: productByCategory.rows,
+          topShops: topShops.rows,
+          userByRole: userByRole.rows
+        }
+      });
+    } catch (err) {
+      console.error("Lỗi lấy chart data:", err);
+      res.status(500).json({ success: false, message: "Lỗi Server" });
+    } finally {
+      if (connection) await connection.close();
+    }
   }
 };
 
