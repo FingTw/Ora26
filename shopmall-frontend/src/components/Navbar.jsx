@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CartContext } from "../contexts/CartContext";
+import SearchBar from "../components/SearchBar";  // ✅ Thêm import SearchBar
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -34,6 +35,11 @@ const Navbar = () => {
           <Link to="/" className="text-2xl font-bold tracking-wider">
             🌿 ShopMall
           </Link>
+
+          {/* ✅ Thêm SearchBar vào giữa logo và các menu */}
+          <div className="flex-1 max-w-md mx-4">
+            <SearchBar />
+          </div>
 
           <div className="flex items-center space-x-6">
             <Link to="/" className="hover:text-green-200 transition">
