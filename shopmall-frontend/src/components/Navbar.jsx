@@ -35,13 +35,13 @@ const Navbar = () => {
         <div className="flex justify-between h-16 items-center">
           <Link to="/" className="flex items-center gap-2 group">
             <img src="/logo.svg" alt="Nông Sản Logo" className="h-10 w-auto group-hover:scale-110 transition-transform" />
-            <span className="text-2xl font-extrabold tracking-wider text-green-700">Mall</span>
+            <span className="text-2xl font-extrabold tracking-wider text-green-700">SAP - Nông Sản Việt</span>
           </Link>
 
           <div className="flex items-center space-x-6">
-            <Link to="/" className="hover:text-green-200 transition">
+            {/* <Link to="/" className="hover:text-green-200 transition">
               Trang chủ
-            </Link>
+            </Link> */}
 
             <SearchBar />
 

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Cart from "./pages/Cart";
@@ -54,6 +55,7 @@ function App() {
             </Route>
           </Route>
         </Routes>
+        <Footer />
       </BrowserRouter>
     </CartProvider>
   );

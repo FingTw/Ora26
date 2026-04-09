@@ -13,13 +13,10 @@ const Cart = () => {
     updateQuantity,
     removeItem,
     increaseQuantity,
-    decreaseQuantity,
-    setCartCount
+    decreaseQuantity
   } = useContext(CartContext);
 
   const [user, setUser] = useState(null);
-
-  // States for Checkout Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [diachi, setDiachi] = useState("");
   const [mapttt, setMapttt] = useState(1);
@@ -29,7 +26,16 @@ const Cart = () => {
     fetchCartItems();
     const userString = localStorage.getItem("user");
     if (userString && userString !== "undefined") {
-      setUser(JSON.parse(userString));
+      try {
+        const userData = JSON.parse(userString);
+        setUser(userData);
+        // Nếu có địa chỉ trong user thì set mặc định
+        if (userData.DIACHI) {
+          setDiachi(userData.DIACHI);
+        }
+      } catch (error) {
+        console.error("Lỗi parse user:", error);
+      }
     }
   }, []);
 
@@ -48,7 +54,10 @@ const Cart = () => {
         <div className="text-8xl mb-6">🛒</div>
         <p className="text-gray-600 text-xl font-medium mb-2">Giỏ hàng của bạn đang trống</p>
         <p className="text-gray-400 mb-8">Hãy tìm thêm các mặt hàng nông sản tươi sạch nhé!</p>
-        <button onClick={() => navigate("/")} className="inline-block bg-green-600 shadow-md shadow-green-200 text-white px-8 py-3 rounded-full font-bold hover:bg-green-700 transition">
+        <button 
+          onClick={() => navigate("/")} 
+          className="inline-block bg-green-600 shadow-md shadow-green-200 text-white px-8 py-3 rounded-full font-bold hover:bg-green-700 transition"
+        >
           Tiếp tục mua sắm
         </button>
       </div>
@@ -64,18 +73,25 @@ const Cart = () => {
       navigate("/login");
       return;
     }
-    setDiachi(user.DIACHI || ""); // Lấy địa chỉ mặc định từ thông tin gốc
     setIsModalOpen(true);
   };
 
+  // ✅ SỬA: Lấy danh sách MASP hiện tại từ cartItems (đã được đồng bộ)
   const submitCheckout = async () => {
     if (!diachi.trim()) {
       alert("⚠️ Vui lòng nhập địa chỉ giao hàng!");
       return;
     }
 
+    // ✅ QUAN TRỌNG: Lấy danh sách MASP trực tiếp từ state hiện tại
+    const danhSachSP = cartItems.map(item => item.MASP);
+    
+    if (danhSachSP.length === 0) {
+      alert("⚠️ Giỏ hàng trống, không thể thanh toán!");
+      return;
+    }
+
     setIsSubmitting(true);
-    const danhSachSP = cartItems.map(item => item.MASP); // Gom mảng MASP
 
     try {
       const payload = {
@@ -85,23 +101,38 @@ const Cart = () => {
         danhSachSP: danhSachSP
       };
 
+      console.log("📦 Đang gửi đơn hàng:", payload);
+
       const res = await orderService.checkout(payload);
 
       if (res.success) {
         setIsModalOpen(false);
-        // Refresh Giỏ hàng do Backend DB đã tự clear CTGH
+        // ✅ Refresh lại giỏ hàng từ server sau khi thanh toán thành công
         await fetchCartItems();
-        setCartCount(0);
-        navigate("/checkout-success"); // Chuyển sang trang Cảm ơn
+        alert("✅ Đặt hàng thành công!");
+        navigate("/");
       } else {
-        alert("❌ Đặt hàng thất bại: " + res.message);
+        alert("❌ Đặt hàng thất bại: " + (res.message || "Lỗi không xác định"));
       }
     } catch (err) {
+      console.error("❌ Lỗi thanh toán:", err);
       const errorMsg = err.response?.data?.message || err.message || "Lỗi tạo hóa đơn.";
       alert("❌ Lỗi: " + errorMsg);
+      // Nếu có lỗi, refresh lại giỏ hàng để đồng bộ
+      await fetchCartItems();
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // ✅ Hàm xóa sản phẩm có refresh
+  const handleRemoveItem = async (masp) => {
+    const confirmDelete = window.confirm("Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?");
+    if (!confirmDelete) return;
+    
+    await removeItem(masp);
+    // ✅ Refresh lại toàn bộ giỏ hàng sau khi xóa
+    await fetchCartItems();
   };
 
   return (
@@ -133,6 +164,7 @@ const Cart = () => {
                           src={item.HINHANH && item.HINHANH !== 'null' && item.HINHANH !== 'default.jpg' ? `http://localhost:5000/uploads/${item.HINHANH}` : "https://via.placeholder.com/150?text=No+Image"}
                           alt={item.TENSP}
                           className="w-20 h-20 object-cover rounded-xl shadow-sm border border-gray-100"
+                          onError={(e) => { e.target.src = "https://via.placeholder.com/150?text=No+Image"; }}
                         />
                         <div className="ml-5">
                           <p className="font-bold text-gray-800 text-base mb-1 hover:text-green-600 cursor-pointer" onClick={() => navigate(`/product/${item.MASP}`)}>{item.TENSP}</p>
@@ -155,10 +187,11 @@ const Cart = () => {
                           type="number"
                           min="1"
                           value={item.SOLUONG}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const newValue = parseInt(e.target.value);
                             if (!isNaN(newValue) && newValue >= 1) {
-                              updateQuantity(item.MASP, newValue);
+                              await updateQuantity(item.MASP, newValue);
+                              await fetchCartItems(); // ✅ Refresh sau khi cập nhật
                             }
                           }}
                           className="w-14 text-center font-bold text-gray-700 bg-transparent focus:outline-none"
@@ -176,7 +209,7 @@ const Cart = () => {
                     </td>
                     <td className="px-6 py-5 text-right">
                       <button
-                        onClick={() => removeItem(item.MASP)}
+                        onClick={() => handleRemoveItem(item.MASP)}
                         className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"
                         title="Xóa khỏi giỏ"
                       >
@@ -192,7 +225,7 @@ const Cart = () => {
           </div>
         </div>
 
-        {/* Thông tin đơn hàng (Tổng kết) */}
+        {/* Thông tin đơn hàng */}
         <div className="lg:w-96">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
             <h2 className="text-xl font-bold mb-6 text-gray-800">Cộng giỏ hàng</h2>
@@ -229,7 +262,7 @@ const Cart = () => {
         </div>
       </div>
 
-      {/* --- MODAL CHỐT ĐƠN (CHECKOUT) --- */}
+      {/* MODAL CHỐT ĐƠN */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-[fadeIn_0.2s_ease-out]">
@@ -244,7 +277,6 @@ const Cart = () => {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Form nhập địa chỉ */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   📍 Địa chỉ giao hàng <span className="text-red-500">*</span>
@@ -259,7 +291,6 @@ const Cart = () => {
                 ></textarea>
               </div>
 
-              {/* Form chọn Phương thức thanh toán */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   💳 Phương thức thanh toán
