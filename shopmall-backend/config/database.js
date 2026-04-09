@@ -6,9 +6,9 @@ oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 async function initialize() {
   try {
     await oracledb.createPool({
-      user: "C##SHOPMALL_ADMIN",
+      user: "ECOM",
       password: "123456",
-      connectString: "localhost:1521/free",
+      connectString: "localhost:1521/orclpdb",
 
       poolMin: 2,
       poolMax: 10,
